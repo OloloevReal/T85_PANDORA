@@ -3,7 +3,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 // #include <avr/interrupt.h>
-// #include <avr/sleep.h>
+ #include <avr/sleep.h>
 // #include <avr/wdt.h>
 
 #include "Storage.h"
@@ -32,20 +32,19 @@ struct Data _data = {2, FIRST};
 digs *_digs = new digs();
 Sensor_Real * _sensor = new  Sensor_Real(PIN_SENSOR, ADC_SENSOR);
 
+bool flag_b = false;
+uint8_t ack_t = 0;
+
+bool calibration();
+void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true);
+
 void setup(){
     Serial.begin(9600);
     
-    DDRB |= (1 << PIN_LED1) | (1 << PIN_VALET) | (1 << PIN_BUTTON); // OUTPUT
-    PORTB &= ~_BV(PIN_LED1);  // LOW
-    PORTB &= ~_BV(PIN_VALET); // LOW
+    DDRB |= (1 << PIN_LED1) | (1 << PIN_VALET) | (1 << PIN_BUTTON); // PIN OUTPUT
+    PORTB &= ~_BV(PIN_LED1);  // PIN STATE LOW
+    PORTB &= ~_BV(PIN_VALET); // PIN STATE LOW
     PORTB |= _BV(PIN_BUTTON); // HIGHT
-
-    // pinMode(PIN_LED1, OUTPUT);
-    // digitalWrite(PIN_LED1, LOW);
-
-    // pinMode(PIN_VALET, OUTPUT);
-
-    // pinMode(PIN_BUTTON, OUTPUT);
 
     if(!digitalRead(PIN_BUTTON)){
         Serial.println("Storage clearing");
@@ -54,6 +53,7 @@ void setup(){
 
     if(!_storage.get(_data)){
         Serial.println("Storage is empty");
+        _data._v = 1325;
         _storage.add(_data);
     }
     if(_data._v == 0 || _data._m == FIRST){
@@ -67,13 +67,23 @@ void setup(){
     // Serial.printf(("Stored mode: %S\r\n"), getMode_co_str( _data._m));
     // Serial.printf(("Stored value: %d\r\n"), _data._v);
     _sensor->Init();
+
+    flashPIN(PIN_LED1, 1, 4, false);
+    flag_b = calibration();
+    if(!flag_b){
+        Serial.println("Calibration failed!");
+        flashPIN(PIN_LED1, 5, 2, false);
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        sleep_enable();
+        sleep_mode();
+    }
 }
 
-void flashLed(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true){
+void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true){
     for (size_t i = 0; i < n; i++)
     {
         PORTB ^=_BV(_pin);
-        delay((150 * mult)); // TODO: change to _delay_ms
+        delay((100 * mult)); // TODO: change to _delay_ms
         PORTB ^=_BV(_pin);
         delay((100 * mult));
     }
@@ -84,61 +94,70 @@ void flashLed(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true
 
 uint8_t pushValet(uint8_t num){
         Serial.printf("%d ", num);
-        flashLed(PIN_VALET, num, 1, false);
-        //Serial.printf("Impuls: %d\r\n", _sensor->GetImpuls());
-        //_delay_ms(500);
+        flashPIN(PIN_VALET, num, 1, false);
+        _delay_ms(500);
         uint8_t ack = _sensor->GetImpulse();
         Serial.printf("(%d) ", ack);
         return ack;
+}
+
+
+
+bool calibration(){
+    _delay_ms(100);
+    if(!_sensor->GetValueBool()){
+        return pushValet(2) > 0?true:false;
+    }
+    return false;
 }
 
 void loop(){
     if (_data._m != WORK)
     {
         if(_data._m == STOP){
+            Serial.printf("PIN: %d\r\n", _digs->GetValue());
             //print result
-            flashLed(PIN_LED1,_digs->n0, 2);
-            //_delay_ms(t_delay);
-            flashLed(PIN_LED1,_digs->n1, 2);
-            //_delay_ms(t_delay);
-            flashLed(PIN_LED1,_digs->n2, 2);
-            //_delay_ms(t_delay);
-            flashLed(PIN_LED1,_digs->n3, 2, false);
+            flashPIN(PIN_LED1,_digs->n0, 2);
+            flashPIN(PIN_LED1,_digs->n1, 2);
+            flashPIN(PIN_LED1,_digs->n2, 2);
+            flashPIN(PIN_LED1,_digs->n3, 2, false);
         }
         _delay_ms(5000);
-        return -1;
+        return;
     }
-        //flashLed(PIN_LED1, 2, 2, false);
+
         Serial.printf("->: %d\r\n", _digs->Next());
-        //Serial.printf("PIN0: %d\r\n", _sensor->GetValue());
+        flag_b = true;
+
         
-        flashLed(PIN_LED1, 1, 2, false);
-        pushValet(_digs->n0);
+        ack_t = pushValet(_digs->n0);
+        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
+        flag_b &= ack_t>0?true:false;
 
-        flashLed(PIN_LED1, 1, 2, false);
-        pushValet(_digs->n1);
+        ack_t = pushValet(_digs->n1)>0?true:false;
+        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
+        flag_b &= ack_t>0?true:false;
 
-        flashLed(PIN_LED1, 1, 2, false);
-        pushValet(_digs->n2);
+        ack_t = pushValet(_digs->n2)>0?true:false;
+        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
+        flag_b &= ack_t>0?true:false;
 
-        flashLed(PIN_LED1, 1, 2, false);
-        uint8_t ack = pushValet(_digs->n3);
+        ack_t = pushValet(_digs->n3);
+        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
+        flag_b &= ack_t>0?true:false;
 
-        Serial.println();
+        Serial.printf("%s\r\n",flag_b?"OK":"NOK");
 
-        // Serial.print("Impulse: "); 
-        // uint8_t _value = _sensor->GetImpulse();
-        // Serial.println(_value);
-        if(ack == 2){
+        //Serial.println();
+
+        if(ack_t == 2){
             _data._m = STOP;
         }else{
-            delay(4000);
+            delay(5000);
         }
         
         _data._m = _digs->GetValue() == 9999?STOP:_data._m;
-        // _data._m = _digs->GetValue() == 3945?STOP:WORK;
 
         _data._v = (uint16_t)_digs->GetValue();
         _storage.add(_data);
-        //_delay_ms(1000);
 }

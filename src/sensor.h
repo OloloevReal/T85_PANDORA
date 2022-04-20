@@ -3,10 +3,11 @@
 
 #include "Arduino.h"
 
-#define TIMEOUT 3 // 5 sec timout default
-#define _short_impulse_t 150
-#define _lowLevel 800
-#define _delay_default 50
+#define TIMEOUT 4 // 5 sec timout default
+#define _very_short_impulse_t 200
+#define _short_impulse_t 1200
+#define _lowLevel 970
+#define _delay_default 10
 
 	/*
 	True -> False: 11110000
@@ -34,26 +35,26 @@ public:
     2 - long impuls
     */
 
-    uint16_t millis16(){
-        return millis() & 0xFFFF;
-    }
+    // uint16_t millis16(){
+    //     return millis() & 0xFFFF;
+    // }
 
     uint8_t GetImpulse(uint8_t timeout = TIMEOUT){
-        uint16_t start_t = millis16();
-        uint16_t start_imp_t = 0;
+        unsigned long start_t = millis();
+        unsigned long start_imp_t = 0;
         bool value = false;
-        while(millis16()-start_t < timeout * 1000){
+        while(millis() - start_t < timeout * 1000){
             // false -> true
             if(!value && GetValueBool()){
                 value = true;
-                start_imp_t = millis16();
+                start_imp_t = millis();
             }
 
             // true -> false
             if(value && !GetValueBool()){
                 value = false;
                 //ignore very short impulse
-                if(millis()&0xFFFF - start_imp_t > _short_impulse_t){
+                if(millis() - start_imp_t > _very_short_impulse_t){
                     break;
                 }else{
                     start_imp_t = 0;
@@ -66,7 +67,7 @@ public:
         if(start_imp_t == 0 ){
             return 0;
         }else{
-            if(millis16() - start_imp_t <= 800){
+            if(millis() - start_imp_t <= _short_impulse_t){
                 return 1;
             }else{
                 return 2;
