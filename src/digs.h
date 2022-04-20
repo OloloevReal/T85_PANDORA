@@ -13,24 +13,30 @@
         int _value = 0;
 
         bool isZero(){
-            return n0 == 0 || n1 == 0 || n2 == 0 || n3 == 0?true:false;
+            return nn[0] == 0 || nn[1] == 0 || nn[2] == 0 || nn[3] == 0?true:false;
         }
     public:
-        uint8_t n0;
-        uint8_t n1;
-        uint8_t n2;
-        uint8_t n3;
+        uint8_t nn[4];
+        // uint8_t n0;
+        // uint8_t n1;
+        // uint8_t n2;
+        // uint8_t n3;
 
         void Parse(int value){
             _value = value;
-            n3 = value % 10;
-            n2 = value / 10 % 10;
-            n1 = value / 100 % 10;
-            n0 = value / 1000 % 10;
+            // n3 = ;
+            // n2 = ;
+            // n1 = ;
+            // n0 = ;
+            nn[0] = value / 1000 % 10;
+            nn[1] = value / 100 % 10;
+            nn[2] = value / 10 % 10;
+            nn[3] = value % 10;
+
         };
 
         void Print(){
-            Serial.printf("%d %d %d %d\r\n", n0, n1, n2, n3);
+            Serial.printf("%d %d %d %d\r\n", nn[0], nn[1], nn[2], nn[3]);
         };
 
         int GetValue(){

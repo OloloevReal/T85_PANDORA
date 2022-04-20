@@ -36,7 +36,7 @@ bool flag_b = false;
 uint8_t ack_t = 0;
 
 bool calibration();
-void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true);
+void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = false);
 
 void setup(){
     Serial.begin(9600);
@@ -79,7 +79,7 @@ void setup(){
     }
 }
 
-void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true){
+void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = false){
     for (size_t i = 0; i < n; i++)
     {
         PORTB ^=_BV(_pin);
@@ -94,7 +94,7 @@ void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult = 1, bool _post_delay = true
 
 uint8_t pushValet(uint8_t num){
         Serial.printf("%d ", num);
-        flashPIN(PIN_VALET, num, 1, false);
+        flashPIN(PIN_VALET, num, 1);
         _delay_ms(500);
         uint8_t ack = _sensor->GetImpulse();
         Serial.printf("(%d) ", ack);
@@ -117,10 +117,9 @@ void loop(){
         if(_data._m == STOP){
             Serial.printf("PIN: %d\r\n", _digs->GetValue());
             //print result
-            flashPIN(PIN_LED1,_digs->n0, 2);
-            flashPIN(PIN_LED1,_digs->n1, 2);
-            flashPIN(PIN_LED1,_digs->n2, 2);
-            flashPIN(PIN_LED1,_digs->n3, 2, false);
+            for(uint8_t i = 0; i < sizeof(_digs->nn);i++){
+                flashPIN(PIN_LED1,_digs->nn[i], 2, true);
+            }
         }
         _delay_ms(5000);
         return;
@@ -129,26 +128,13 @@ void loop(){
         Serial.printf("->: %d\r\n", _digs->Next());
         flag_b = true;
 
-        
-        ack_t = pushValet(_digs->n0);
-        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
-        flag_b &= ack_t>0?true:false;
-
-        ack_t = pushValet(_digs->n1)>0?true:false;
-        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
-        flag_b &= ack_t>0?true:false;
-
-        ack_t = pushValet(_digs->n2)>0?true:false;
-        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
-        flag_b &= ack_t>0?true:false;
-
-        ack_t = pushValet(_digs->n3);
-        flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2, false);
-        flag_b &= ack_t>0?true:false;
+        for(uint8_t i = 0; i < sizeof(_digs->nn); i++){
+            ack_t = pushValet(_digs->nn[i]);
+            flashPIN(PIN_LED1, ack_t == 0?3:ack_t, 2);
+            flag_b &= ack_t>0?true:false;
+        }
 
         Serial.printf("%s\r\n",flag_b?"OK":"NOK");
-
-        //Serial.println();
 
         if(ack_t == 2){
             _data._m = STOP;
