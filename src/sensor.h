@@ -3,10 +3,10 @@
 
 #include "Arduino.h"
 
-#define TIMEOUT 4 // 5 sec timout default
+#define TIMEOUT 3 // 5 sec timout default
 #define _very_short_impulse_t 200
-#define _short_impulse_t 1200
-#define _lowLevel 970
+#define _short_impulse_t 1300
+#define _lowLevel 968
 #define _delay_default 10
 
 	/*
