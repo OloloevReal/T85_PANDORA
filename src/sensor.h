@@ -5,7 +5,7 @@
 
 #define TIMEOUT 3 // 5 sec timout default
 #define _very_short_impulse_t 200
-#define _short_impulse_t 1300
+#define _short_impulse_t 1400
 #define _lowLevel 968
 #define _delay_default 10
 
@@ -81,7 +81,11 @@ public:
     };
 
     uint16_t GetValue(){
-        return analogRead(_adc);
+        uint16_t r = 0;
+        for(uint8_t i = 0; i < 10; i++){
+            r += analogRead(_adc);
+        }
+        return r/10;
     }
 
     bool GetValueBool(){

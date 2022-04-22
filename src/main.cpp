@@ -2,35 +2,25 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-// #include <avr/interrupt.h>
- #include <avr/sleep.h>
- #include <avr/wdt.h>
-
-
-
+#include <avr/sleep.h>
+#include <avr/wdt.h>
 #include "Storage.h"
 #include "digs.h"
 #include "sensor.h"
-//#include "Logging.h"
 
 #define VERSION "0.0.2"
 
-
-
 #define PIN_BUTTON PIN_B0
-
 #define PIN_LED1 PIN_B4
-
 #define PIN_VALET PIN_B1
-
-#define CALIBRATION
 
 #define PIN_SENSOR PIN_B5
 #define ADC_SENSOR 0
 
+#define CALIBRATION
+
 static EEPROMStorage<Data> _storage(100);
 struct Data _data = {2, FIRST};
-
 
 //PORTB |= (1 << PB0); Pin 0 ON
 //PORTB &= ~(1 << PB0); Pin 0 OFF
@@ -70,7 +60,6 @@ void setup(){
     if(_data._v == 0 || _data._m == FIRST){
         //first run
         _data._v = 0;
-        //_data._v = 1331;
         _data._m = WORK;
     }
 
@@ -79,12 +68,11 @@ void setup(){
     // Serial.printf(("Stored mode: %S\r\n"), getMode_co_str( _data._m));
     // Serial.printf(("Stored value: %d\r\n"), _data._v);
     _sensor->Init();
-
-    flashPIN(PIN_LED1, 1, 4, false);
     Serial.printf("Reference value: %d\r\n", _sensor->GetValue());
 
 #ifdef CALIBRATION
     if(_data._m == WORK){
+        flashPIN(PIN_LED1, 1, 4, true);
         flag_b = calibration();
         if(!flag_b){
             Serial.println("Calibration failed!");
@@ -156,7 +144,6 @@ bool calibration(){
 }
 
 void loop(){
-    //SleepDisable();
     if (_data._m != WORK)
     {
         if(_data._m == STOP){
@@ -165,6 +152,10 @@ void loop(){
             for(uint8_t i = 0; i < sizeof(_digs->nn);i++){
                 flashPIN(PIN_LED1,_digs->nn[i], 3, true);
             }
+        }
+        if(!digitalRead(PIN_BUTTON)){
+            _data._m = WORK;
+            _storage.add(_data);
         }
         SleepAndRestart(WDTO_4S|WDTO_2S);
     }
@@ -179,15 +170,10 @@ void loop(){
     }
 
     Serial.printf("%s\r\n",flag_b?"OK":"NOK");
-
-    if(ack_t == 2){
-        _data._m = STOP;
-    }else{
-        SleepAndRestart(WDTO_4S, false);
-    }
     
-    _data._m = _digs->GetValue() == 9999?STOP:_data._m;
+    _data._m = _digs->GetValue() == 9999 || ack_t == 2 ?STOP:_data._m;
 
     _data._v = (uint16_t)_digs->GetValue();
     _storage.add(_data);
+    SleepAndRestart(WDTO_4S, false);
 }
