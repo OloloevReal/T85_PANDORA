@@ -6,7 +6,7 @@
 #define TIMEOUT 3 // 5 sec timout default
 #define _very_short_impulse_t 200
 #define _short_impulse_t 1400
-#define _lowLevel 968
+#define _lowLevel 974
 #define _delay_default 10
 
 	/*
@@ -23,11 +23,15 @@ private:
     uint8_t _adc;
     // int _no_of_samples = 64;
     // int _delay_default = 50;
+    uint8_t _buffer;
+    //bool _state;
 
 public:
     Sensor_Real(uint8_t pin, uint8_t adc){
         _pin = pin;
         _adc = adc;
+        _buffer = 0;
+        //_state = false;
     };
     /*
     0 - 0
@@ -38,20 +42,24 @@ public:
     // uint16_t millis16(){
     //     return millis() & 0xFFFF;
     // }
+    
 
     uint8_t GetImpulse(uint8_t timeout = TIMEOUT){
         unsigned long start_t = millis();
         unsigned long start_imp_t = 0;
         bool value = false;
+        bool _state = false;
+
         while(millis() - start_t < timeout * 1000){
             // false -> true
-            if(!value && GetValueBool()){
+            _state = GetValueBool(_state);
+            if(!value && _state){
                 value = true;
                 start_imp_t = millis();
             }
 
             // true -> false
-            if(value && !GetValueBool()){
+            if(value && !_state){
                 value = false;
                 //ignore very short impulse
                 if(millis() - start_imp_t > _very_short_impulse_t){
@@ -81,15 +89,26 @@ public:
     };
 
     uint16_t GetValue(){
-        uint16_t r = 0;
-        for(uint8_t i = 0; i < 10; i++){
-            r += analogRead(_adc);
-        }
-        return r/10;
+        // uint16_t r = 0;
+        // for(uint8_t i = 0; i < 10; i++){
+        //     r += analogRead(_adc);
+        // }
+        // return r/10;
+        return analogRead(_adc);
     }
 
-    bool GetValueBool(){
-        return GetValue()<_lowLevel?true:false;
+    bool GetValueBool(bool p_state){
+        _buffer <<= 1;
+        _buffer |= GetValue()<_lowLevel?true:false;
+
+        if((_buffer & 0x07) == 0x07){
+            return true;
+        }
+        else if ((_buffer & 0x0F) == 0x00)
+        {
+            return false;
+        }
+        return p_state;
     }
 };
 

@@ -129,15 +129,6 @@ bool EEPROMStorage<T>::clear()
 		}
 	}
 
-	//clear resets byte
-	// EEPROM.write(size(), 0);
-
-	//cleat timer and its crc
-	// EEPROM.write(size() + 1, 0);
-	// EEPROM.write(size() + 2, 0);
-	// EEPROM.write(size() + 3, 0); // ??
-	// EEPROM.write(size() + 4, 0);
-
 	if (t == 0){
 		activeBlock = 0;
 		return true;
@@ -145,5 +136,5 @@ bool EEPROMStorage<T>::clear()
 	return false;
 }
 
-template class EEPROMStorage<uint16_t>;
+//template class EEPROMStorage<uint16_t>;
 template class EEPROMStorage<Data>;

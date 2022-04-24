@@ -18,6 +18,7 @@
 #define ADC_SENSOR 0
 
 #define CALIBRATION
+#define POWER_SAVE
 
 static EEPROMStorage<Data> _storage(100);
 struct Data _data = {2, FIRST};
@@ -38,10 +39,12 @@ void SleepAndRestart(uint8_t time_s, bool restart = true);
 void SleepDisable();
 
 void setup(){
+#ifdef POWER_SAVE
     SleepDisable();
     MCUSR = 0;
+#endif
     Serial.begin(9600);
-    Serial.printf("\r\nVersion: %s\r\n", VERSION);
+    Serial.printf("\r\nVer: %s\r\n", VERSION);
 
     DDRB |= (1 << PIN_LED1) | (1 << PIN_VALET) | (1 << PIN_BUTTON); // PIN OUTPUT
     PORTB &= ~_BV(PIN_LED1);  // PIN STATE LOW
@@ -49,17 +52,18 @@ void setup(){
     PORTB |= _BV(PIN_BUTTON); // HIGHT
 
     if(!digitalRead(PIN_BUTTON)){
-        Serial.println("Storage clearing");
+        Serial.println("Clearing");
        _storage.clear();
     }
 
     if(!_storage.get(_data)){
-        Serial.println("Storage is empty");
+        //Serial.println("Storage is empty");
         _storage.add(_data);
     }
     if(_data._v == 0 || _data._m == FIRST){
         //first run
-        _data._v = 0;
+        //_data._v = 0;
+        _data._v = 2320;
         _data._m = WORK;
     }
 
@@ -68,7 +72,9 @@ void setup(){
     // Serial.printf(("Stored mode: %S\r\n"), getMode_co_str( _data._m));
     // Serial.printf(("Stored value: %d\r\n"), _data._v);
     _sensor->Init();
-    Serial.printf("Reference value: %d\r\n", _sensor->GetValue());
+
+    delay(1000);
+    Serial.printf("Ref val: %d\r\n", _sensor->GetValue());
 
 #ifdef CALIBRATION
     if(_data._m == WORK){
@@ -77,18 +83,27 @@ void setup(){
         if(!flag_b){
             Serial.println("Calibration failed!");
             flashPIN(PIN_LED1, 5, 2, false);
+#ifdef POWER_SAVE
             SleepAndRestart(WDTO_8S);
+#else
+            _delay_ms(8000);
+#endif
         }
         PORTB |= _BV(PIN_LED1);
-        //_delay_ms(10000);
+#ifdef POWER_SAVE
         SleepAndRestart(WDTO_8S | WDTO_2S, false);
+#else
+        _delay_ms(10000);
+#endif
         PORTB &= ~_BV(PIN_LED1);
     }
 #endif
-
 }
+
+#ifdef POWER_SAVE
 ISR(WDT_vect) {
 }
+
 
 void SleepDisable(){
     wdt_disable();
@@ -111,6 +126,7 @@ void SleepAndRestart(uint8_t time_s, bool restart){
     wdt_disable();
     cli();
 }
+#endif
 
 void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult, bool _post_delay){
     for (size_t i = 0; i < n; i++)
@@ -128,16 +144,16 @@ void flashPIN(uint8_t _pin, uint8_t n, uint8_t mult, bool _post_delay){
 uint8_t pushValet(uint8_t num){
         Serial.printf("%d ", num);
         flashPIN(PIN_VALET, num, 1);
-        _delay_ms(500);
+        delay(500);
         uint8_t ack = _sensor->GetImpulse();
         Serial.printf("(%d) ", ack);
         return ack;
 }
 
 bool calibration(){
-    _delay_ms(200);
-    if(!_sensor->GetValueBool()){
-        _delay_ms(200);
+    delay(200);
+    if(!_sensor->GetValueBool(false)){
+        delay(200);
         return pushValet(2) > 0?true:false;
     }
     return false;
@@ -157,7 +173,11 @@ void loop(){
             _data._m = WORK;
             _storage.add(_data);
         }
+#ifdef POWER_SAVE
         SleepAndRestart(WDTO_4S|WDTO_2S);
+#else
+        return;
+#endif
     }
 
     Serial.printf("->: %d\r\n", _digs->Next());
@@ -175,5 +195,9 @@ void loop(){
 
     _data._v = (uint16_t)_digs->GetValue();
     _storage.add(_data);
+#ifdef POWER_SAVE
     SleepAndRestart(WDTO_4S, false);
+#else
+    _delay_ms(4000);
+#endif
 }
